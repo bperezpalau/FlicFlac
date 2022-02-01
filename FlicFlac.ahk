@@ -40,6 +40,7 @@ VersionString := "1.10"
 NameString    := "FlicFlac"
 IniFile        = %A_ScriptDir%\%NameString%.ini
 Global Destination	:= ""
+OverwriteDestination := "Empty"
 
 FileInstall FlicFlac.ini, %A_ScriptDir%\FlicFlac.ini
 
@@ -252,14 +253,14 @@ SelectFilesBtn:
 	WinSet AlwaysOnTop, On
 	If (lc_answer1="No"){
 		WinSet AlwaysOnTop, Off
-		MsgBox 64,SAVE,Now choose the destination folder of new files.
+;		MsgBox 64,SAVE,Now choose the destination folder of new files.
 		FileSelectFolder, OutputVar, , 3
 		If (OutputVar = ""){
 			MsgBox, You didn't select a folder.
 			WinSet AlwaysOnTop, On
 		}Else {
 			Destination = %OutputVar%
-			MsgBox, You selected folder "%Destination%".
+;			MsgBox, You selected folder "%Destination%".
 			WinSet AlwaysOnTop, On
 			SplashTextOn,,, Starting process.
 			Sleep 1000
@@ -302,7 +303,7 @@ GuiDropFiles:
     Files := CleanFileList( ExpandFileList( Files ), InExtension%GuiOutFormat% )
 	WinSet AlwaysOnTop, Off
 	Destination := ""
-	MsgBox, 3,, Would you like to use the same folder as destination?
+	MsgBox, 3,Action required, Would you like to use the same folder as destination? (Temporal file will be in the same folder anyways).
 	IfMsgBox Yes
 		lc_answer1 := "Yes"
 	Else IfMsgBox No 
@@ -310,14 +311,14 @@ GuiDropFiles:
 	WinSet AlwaysOnTop, On	
 	If (lc_answer1="No"){
 		WinSet AlwaysOnTop, Off
-		MsgBox 64,SAVE,Now choose the destination folder of new files.
+;		MsgBox 64,SAVE,Now choose the destination folder of new files.
 		FileSelectFolder, OutputVar, , 3
 		If (OutputVar = ""){
 			MsgBox, You didn't select a folder.
 			WinSet AlwaysOnTop, On
 		}Else {
 			Destination = %OutputVar%
-			MsgBox, You selected folder "%Destination%".
+;			MsgBox, You selected folder "%Destination%".
 			WinSet AlwaysOnTop, On
 			SplashTextOn,,, Starting process.
 			Sleep 1000
@@ -402,7 +403,7 @@ ConvertSingleFile( inFileFullName, outFormat ) {
   ; external converters (e.g. FLAC2MP3)
   
   Global TmpFilename, DebugMode
-  Global Destination
+  Global Destination, OverwriteDestination
   lc_answer1 := ""
   
   Result := "Error"
@@ -415,80 +416,115 @@ ConvertSingleFile( inFileFullName, outFormat ) {
   If( Not OkToOverwrite( NameNoExt . "." . outFormat ) )
     Return "NoOverwrite"
     
-  CmdTemplates := GetCommandLine( Extension . "2" . outFormat )
-  StringSplit CmdTemplate, CmdTemplates, `n
+;exist question	
+  IfNotExist, %Destination%\%NameNoExt%.%outFormat%
+	lc_answer1 := "Notexist"
+  IfExist, %Destination%\%NameNoExt%.%outFormat%
+	lc_answer1 := "Exist"
+	
+;  If(lc_answer1="Notexist"){
   
-  If( FileExist( Filename ) and CmdTemplate1 <> "" ) {
-    Transform CommandLine, Deref, %CmdTemplate1%
-    Log( "Run", CommandLine )
-    If( DebugMode < 2 )
-      RunWait %CommandLine%,, Hide UseErrorLevel
+	CmdTemplates := GetCommandLine( Extension . "2" . outFormat )
+	StringSplit CmdTemplate, CmdTemplates, `n
+  
+	If( FileExist( Filename ) and CmdTemplate1 <> "" ) {
+		Transform CommandLine, Deref, %CmdTemplate1%
+		Log( "Run", CommandLine )
+		If( DebugMode < 2 )
+			RunWait %CommandLine%,, Hide UseErrorLevel
       
-    If( Not ErrorLevel ) {
-      If( CmdTemplate2 = "" ) {
-        Result := "Success"
-      }
-      Else {
-        Filename := NameNoExt . "." . CmdTemplate3 
-        Transform CommandLine, Deref, %CmdTemplate2%
-        Log( "Run", CommandLine )
+		If( Not ErrorLevel ) {
+			If( CmdTemplate2 = "" ) {
+				Result := "Success"
+			}
+			Else {
+				Filename := NameNoExt . "." . CmdTemplate3 
+				Transform CommandLine, Deref, %CmdTemplate2%
+				Log( "Run", CommandLine )
         
-        If( DebugMode < 2 )
-          RunWait %CommandLine%,, Hide UseErrorLevel
-        If( Not ErrorLevel ) {
-          Result := "Success"
-        }
-        Log( "Delete", TmpFilename . "." . CmdTemplate3 )
-        If( DebugMode < 2 )
-          FileDelete %TmpFilename%.%CmdTemplate3% ; Delete the temp output
-      }
-    }
-  }
+				If( DebugMode < 2 )
+					RunWait %CommandLine%,, Hide UseErrorLevel
+				If( Not ErrorLevel ) {
+					Result := "Success"
+				}
+				Log( "Delete", TmpFilename . "." . CmdTemplate3 )
+				If( DebugMode < 2 )
+					FileDelete %TmpFilename%.%CmdTemplate3% ; Delete the temp output
+			}
+		}
+	}
+  
+;  }Else If(lc_answer1="Exist"){
+;	WinSet AlwaysOnTop, Off
+;	MsgBox, 4,Action required, Would you like to overwrite the file destination?
+;	WinSet AlwaysOnTop, On
+;	IfMsgBox Yes
+;		lc_answer1 := "Yes"
+;	Else IfMsgBox No 
+;		lc_answer1 := "No"
+;  }
 ;WinSet AlwaysOnTop, Toggle
-;MsgBox 64,Destination %Destination% script %A_ScriptDir%
+;MsgBox 64,,Destination %Destination% exists %lc_answer1% goverwrite %OverwriteDestination%
 ;WinSet AlwaysOnTop, Toggle
   If Destination {
-	FileMove, %Dir%\%NameNoExt%.%outFormat%, %Destination%\%NameNoExt%.%outFormat%
-	If(%A_LastError% is 183){
-		WinSet AlwaysOnTop, Off
-		MsgBox, 4,, Would you like to overwrite the file destination?
-		IfMsgBox Yes
-			lc_answer1 := "Yes"
-		Else IfMsgBox No 
-			lc_answer1 := "No"
-		WinSet AlwaysOnTop, On	
-		If (lc_answer1="No"){
-			WinSet AlwaysOnTop, Off
-				MsgBox 64,Info,File not moved from: %Dir%\%NameNoExt%.%outFormat%
+	If(lc_answer1="Exist"){
+;WinSet AlwaysOnTop, Off
+;MsgBox, 4,Action required, Would you like to overwrite the file destination?
+;IfMsgBox Yes
+;lc_answer1 := "Yes"
+;Else IfMsgBox No 
+;lc_answer1 := "No"	
+		If (OverwriteDestination = "YesAll" or OverwriteDestination = "NoAll"){
+			If (OverwriteDestination = "YesAll"){
+				FileMove, %Dir%\%NameNoExt%.%outFormat%, %Destination%\%NameNoExt%.%outFormat%, 1
+				If(%A_LastError% != "0"){
+					WinSet AlwaysOnTop, Off
+					MsgBox 64,Error moving. Code %A_LastError%,File can not be moved from %Dir%\%NameNoExt%.%outFormat% to destination %Destination%\%NameNoExt%.%outFormat%. 
+					WinSet AlwaysOnTop, On
+				}
 				WinSet AlwaysOnTop, On
-		}Else If(lc_answer1="Yes"){
-			FileMove, %Dir%\%NameNoExt%.%outFormat%, %Destination%\%NameNoExt%.%outFormat%, 1
-			If(%A_LastError% != "0"){
-				WinSet AlwaysOnTop, Off
-				MsgBox 64,Error al Mover Code %A_LastError%,No se ha podido mover %Dir%\%NameNoExt%.%outFormat% al destino elegido: %Destination%\%NameNoExt%.%outFormat%. 
+			}
+		}Else {
+;			WinSet AlwaysOnTop, Off
+			Answer := CMsgBox( "Action required", "Would you like to overwrite the file destination?","*&Yes|&No|Yes to &All|No to A&ll", "Q", 1 )
+;			WinSet AlwaysOnTop, On
+			If( Answer = "Yes to All" ) {
+				OverwriteDestination := "YesAll"
+				FileMove, %Dir%\%NameNoExt%.%outFormat%, %Destination%\%NameNoExt%.%outFormat%, 1
+				If(%A_LastError% != "0"){
+					WinSet AlwaysOnTop, Off
+					MsgBox 64,Error moving. Code %A_LastError%,File can not be moved from %Dir%\%NameNoExt%.%outFormat% to destination %Destination%\%NameNoExt%.%outFormat%. 
+					WinSet AlwaysOnTop, On
+				}
+				WinSet AlwaysOnTop, On
+			}Else If( Answer = "No to All" )
+				OverwriteDestination := "NoAll"
+			
+			If( Answer = "Yes" ) {
+				FileMove, %Dir%\%NameNoExt%.%outFormat%, %Destination%\%NameNoExt%.%outFormat%, 1
+				If(%A_LastError% != "0"){
+					WinSet AlwaysOnTop, Off
+					MsgBox 64,Error moving. Code %A_LastError%,File can not be moved from %Dir%\%NameNoExt%.%outFormat% to destination %Destination%\%NameNoExt%.%outFormat%. 
+					WinSet AlwaysOnTop, On
+				}
 				WinSet AlwaysOnTop, On
 			}
 		}
-	}Else If(%A_LastError% != "0"){
-		WinSet AlwaysOnTop, Off
-		MsgBox, 4,, Would you like to overwrite the file destination?
-		IfMsgBox Yes
-			lc_answer1 := "Yes"
-		Else IfMsgBox No 
-			lc_answer1 := "No"
-		WinSet AlwaysOnTop, On	
-		If (lc_answer1="No"){
-			WinSet AlwaysOnTop, Off
-			MsgBox 64,Info,File not moved from: %Dir%\%NameNoExt%.%outFormat%
-			WinSet AlwaysOnTop, On
-		}Else If(lc_answer1="Yes"){
-			FileMove, %Dir%\%NameNoExt%.%outFormat%, %Destination%\%NameNoExt%.%outFormat%, 1
-			If(%A_LastError% != "0"){
-				WinSet AlwaysOnTop, Off
-				MsgBox 64,Error al Mover Code %A_LastError%,No se ha podido mover %Dir%\%NameNoExt%.%outFormat% al destino elegido: %Destination%\%NameNoExt%.%outFormat%. 
-				WinSet AlwaysOnTop, On
-			}
-		}
+		
+;		WinSet AlwaysOnTop, On
+;		If (lc_answer1="Yes"){
+;			FileMove, %Dir%\%NameNoExt%.%outFormat%, %Destination%\%NameNoExt%.%outFormat%, 1
+;			If(%A_LastError% != "0"){
+;				WinSet AlwaysOnTop, Off
+;				MsgBox 64,Error moving. Code %A_LastError%,File can not be moved from %Dir%\%NameNoExt%.%outFormat% to destination %Destination%\%NameNoExt%.%outFormat%. 
+;				WinSet AlwaysOnTop, On
+;			}
+;			WinSet AlwaysOnTop, On
+;		}
+		
+	}Else If(lc_answer1="Notexist"){
+		FileMove, %Dir%\%NameNoExt%.%outFormat%, %Destination%\%NameNoExt%.%outFormat%
+		WinSet AlwaysOnTop, On
 	}
   }
   WinSet AlwaysOnTop, On
@@ -988,7 +1024,7 @@ Return
 
 Exit:
   Gosub PreExit
-  
+;WinSet AlwaysOnTop, On
   ; Clean the temp binaries
   If( A_IsCompiled and CleanupOnExit ) {
     FileDelete %ApeLocation%
