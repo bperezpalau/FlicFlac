@@ -1,9 +1,13 @@
-FlicFlac 1.10
+FlicFlac 1.10 extra
 ==================================================
+
+Modified version of <https://github.com/DannyBen/FlicFlac>
+
+FlicFlac 1.10 extra makes possible to choose destination folder where converted files will be moved after each conversion completed.
 
 Tiny Portable Audio Converter (WAV FLAC MP3 OGG APE)  
 
-Download binary: <http://sector-seven.com/software/flicflac>
+Download binary: <https://github.com/bperezpalau/FlicFlac/releases/download/1.10e/FlicFlac_110e.zip>
 
 --------------------------------------------------
 
